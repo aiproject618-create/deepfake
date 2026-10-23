@@ -2,116 +2,130 @@
 import streamlit as st
 import tensorflow as tf
 import numpy as np
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
+from pathlib import Path
 
-# ---------------- PAGE CONFIGURATION ----------------
+# ---------------- PAGE SETTINGS ----------------
 st.set_page_config(
     page_title="Deepfake Detection AI",
     page_icon="🔍",
     layout="centered"
 )
 
-# ---------------- LOAD MODEL ----------------
+MODEL_PATH = Path(__file__).parent / "deepfake_model.keras"
+IMAGE_SIZE = (224, 224)
+THRESHOLD = 0.5
+
+# ---------------- LOAD TRAINED MODEL ----------------
 @st.cache_resource
 def load_model():
-    return tf.keras.models.load_model("deepfake_model.keras")
+    if not MODEL_PATH.exists():
+        raise FileNotFoundError(
+            f"Model not found: {MODEL_PATH.name}. "
+            "Place deepfake_model.keras beside app.py."
+        )
+    return tf.keras.models.load_model(
+        str(MODEL_PATH),
+        compile=False
+    )
 
 # ---------------- HEADER ----------------
 st.title("🔍 Deepfake Detection AI")
 st.subheader("AI-Powered Image Authenticity Checker")
 
 st.write(
-    "Upload an image to check whether the model classifies it "
-    "as Real or Fake."
+    "Upload a face image to see whether the trained AI model "
+    "classifies it as real or fake."
 )
 
-st.info(
-    "This is an educational AI project. Predictions are not "
-    "guaranteed to be correct."
+st.warning(
+    "Educational project only. The prediction is not proof "
+    "that an image is genuine or manipulated."
 )
 
 # ---------------- IMAGE UPLOAD ----------------
 uploaded_file = st.file_uploader(
-    "Choose an image",
+    "Upload an image",
     type=["jpg", "jpeg", "png", "webp"]
 )
 
-if uploaded_file is not None:
+if uploaded_file:
     try:
         image = Image.open(uploaded_file).convert("RGB")
 
         st.image(
             image,
-            caption="Uploaded Image",
+            caption="Uploaded image",
             use_container_width=True
         )
 
-        if st.button("🔎 Detect Deepfake", type="primary"):
+        if st.button("Analyze Image", type="primary"):
             with st.spinner("Analyzing image..."):
-                # Prepare image for the model
-                image_resized = image.resize((224, 224))
-                image_array = np.array(
-                    image_resized, dtype=np.float32
-                )
-                image_array = np.expand_dims(image_array, axis=0)
+                model = load_model()
 
-                # Model predicts probability of Real.
-                # This assumes the model was trained with
+                # Match the input size used during training.
+                resized = image.resize(IMAGE_SIZE)
+                pixels = np.asarray(
+                    resized, dtype=np.float32
+                )
+                batch = np.expand_dims(pixels, axis=0)
+
+                # IMPORTANT:
+                # This assumes training used
                 # class_names=["Fake", "Real"].
-                prediction = load_model().predict(
-                    image_array, verbose=0
-                )[0][0]
+                # With binary labels, Fake=0 and Real=1.
+                score = float(
+                    model.predict(batch, verbose=0).reshape(-1)[0]
+                )
 
-                real_probability = float(prediction)
-                fake_probability = 1.0 - real_probability
-
-                st.divider()
-                st.subheader("Detection Result")
-
-                if real_probability >= 0.5:
-                    st.success("✅ Model Prediction: REAL")
+                if not np.isfinite(score) or not 0 <= score <= 1:
+                    st.error("The model returned an invalid score.")
                 else:
-                    st.error("⚠️ Model Prediction: FAKE")
+                    fake_score = 1.0 - score
+                    real_score = score
 
-                st.write(
-                    f"Real score: {real_probability * 100:.2f}%"
-                )
-                st.write(
-                    f"Fake score: {fake_probability * 100:.2f}%"
-                )
+                    st.divider()
+                    st.subheader("Detection Result")
 
-                st.progress(
-                    int(round(real_probability * 100))
-                )
-                st.caption(
-                    "The bar represents the model's Real score, "
-                    "not a guarantee of authenticity."
-                )
+                    if score >= THRESHOLD:
+                        st.success("Prediction: REAL")
+                    else:
+                        st.error("Prediction: FAKE")
 
+                    st.write("Model output scores (not verified probabilities):")
+                    st.write(f"Real score: {real_score * 100:.2f}%")
+                    st.write(f"Fake score: {fake_score * 100:.2f}%")
+
+                    st.caption(
+                        "The model's scores may be poorly calibrated "
+                        "and can be wrong on unfamiliar images."
+                    )
+
+                    st.progress(round(real_score * 100))
+
+    except (UnidentifiedImageError, OSError):
+        st.error("The uploaded file is not a valid image.")
+    except FileNotFoundError as e:
+        st.error(str(e))
     except Exception as e:
-        st.error(f"Could not process the image: {e}")
+        st.error(f"Could not analyze the image: {e}")
 
-# ---------------- PROJECT INFORMATION ----------------
-with st.expander("📘 About this project"):
-    st.write("""
+# ---------------- ABOUT PROJECT ----------------
+with st.expander("About this project"):
+    st.markdown("""
     **Project:** Deepfake Detection using Artificial Intelligence
 
-    **Technology used:**
-    - Python
-    - Streamlit
-    - TensorFlow and Keras
-    - MobileNetV2
-    - NumPy and Pillow
+    **Technologies:** Python, Streamlit, TensorFlow, Keras,
+    MobileNetV2, NumPy and Pillow.
 
-    **How it works:**
+    **Working:**
     1. The user uploads an image.
     2. The image is resized to 224 × 224 pixels.
-    3. The trained neural network analyzes the image.
-    4. The app displays the model's prediction.
+    3. The trained model processes the image.
+    4. The app displays its prediction and scores.
 
-    **Limitation:** Accuracy depends on the training dataset.
-    This model is an educational demonstration, not a forensic
-    verification tool.
+    **Limitation:** Performance depends on the training dataset.
+    This app is not a forensic verification system.
     """)
 
 st.caption("CBSE Class 12 AI Project | Deepfake Detection")
