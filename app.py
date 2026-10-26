@@ -96,5 +96,15 @@ if uploaded_file is not None:
         )
 
         # ---------------- DOWNLOAD REPORT ----------------
-        report = (
-            "DEEPFA
+               report = (
+            "DEEPFAKE AI PROJECT - IMAGE ANALYSIS REPORT\n\n"
+            + f"Filename: {uploaded_file.name}\n"
+            + f"Image width: {width} pixels\n"
+            + f"Image height: {height} pixels\n"
+            + f"Total pixels: {width * height}\n"
+            + f"File size: {len(image_bytes)} bytes\n"
+            + f"Average brightness: {brightness:.2f}\n"
+            + f"Pixel intensity variation: {contrast:.2f}\n\n"
+            + "Deepfake detection: NOT PERFORMED\n"
+            + "Reason: No trained detection model is connected.\n"
+        )
