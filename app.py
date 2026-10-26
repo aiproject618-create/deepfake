@@ -77,4 +77,6 @@ if uploaded_file is not None:
         st.write(f"Pixel intensity variation: {contrast:.2f}")
 
         st.info(
-            "These measurements describe the image only. They do not
+    "These measurements describe the image only. They do not "
+    "indicate whether the image is genuine or AI-generated."
+)
