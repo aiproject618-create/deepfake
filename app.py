@@ -1,8 +1,10 @@
-
-import streamlit as st
-import numpy as np
-from PIL import Image, ImageOps, UnidentifiedImageError
+```python
 import io
+
+import numpy as np
+import streamlit as st
+from PIL import Image, ImageOps, UnidentifiedImageError
+
 
 # ---------------- PAGE CONFIGURATION ----------------
 st.set_page_config(
@@ -11,7 +13,7 @@ st.set_page_config(
     layout="centered"
 )
 
-st.title("🔍 Deepfake AI Detection System")
+st.title("Deepfake AI Detection System")
 st.subheader("CBSE Class 12 Artificial Intelligence Project")
 
 st.write(
@@ -20,25 +22,30 @@ st.write(
 )
 
 st.warning(
-    "Demo mode: This application does not use a trained deepfake "
-    "detection model. It cannot reliably classify images as real or fake."
+    "Educational demo: This version does not use a trained "
+    "deepfake detection model and cannot reliably classify "
+    "images as real or fake."
 )
+
 
 # ---------------- IMAGE UPLOAD ----------------
 uploaded_file = st.file_uploader(
     "Upload an image",
-    type=["jpg", "jpeg", "png", "webp"]
+    type=["jpg", "jpeg", "png", "webp"],
+    help="Supported formats: JPG, JPEG, PNG and WEBP."
 )
 
-# ---------------- PROCESS IMAGE ----------------
-if uploaded_file is not None:
 
+# ---------------- IMAGE PROCESSING ----------------
+if uploaded_file is not None:
     try:
         image_bytes = uploaded_file.getvalue()
 
+        # Verify that the uploaded file is a readable image.
         with Image.open(io.BytesIO(image_bytes)) as source:
             source.verify()
 
+        # Reopen the image after verification.
         with Image.open(io.BytesIO(image_bytes)) as source:
             image = ImageOps.exif_transpose(source).convert("RGB")
 
@@ -64,48 +71,30 @@ if uploaded_file is not None:
         col1, col2 = st.columns(2)
 
         with col1:
-            st.metric("Width", f"{width} px")
-            st.metric("Height", f"{height} px")
+            st.metric("Width", f"{width} pixels")
+            st.metric("Height", f"{height} pixels")
 
         with col2:
             st.metric("Total Pixels", f"{width * height:,}")
             st.metric("File Size", f"{file_size_kb:.2f} KB")
 
+        # ---------------- BASIC IMAGE ANALYSIS ----------------
         st.header("Basic Image Analysis")
 
         st.write(f"Average Brightness: {brightness:.2f} / 255")
-        st.progress(int(np.clip(brightness / 255 * 100, 0, 100)))
+
+        brightness_percent = int(
+            np.clip(brightness / 255 * 100, 0, 100)
+        )
+        st.progress(brightness_percent)
 
         st.write(f"Pixel Intensity Variation: {contrast:.2f}")
 
         st.info(
-            "These measurements describe the image only. "
-            "They do not determine whether the image is real or fake."
+            "These measurements describe image properties only. "
+            "They do not determine whether an image is real or fake."
         )
 
         # ---------------- DOWNLOAD REPORT ----------------
         report = (
-            "DEEPFAKE AI PROJECT - IMAGE ANALYSIS REPORT\n\n"
-            f"Filename: {uploaded_file.name}\n"
-            f"Width: {width} pixels\n"
-            f"Height: {height} pixels\n"
-            f"Total pixels: {width * height}\n"
-            f"File size: {len(image_bytes)} bytes\n"
-            f"Average brightness: {brightness:.2f}\n"
-            f"Pixel intensity variation: {contrast:.2f}\n\n"
-            "Deepfake detection: NOT PERFORMED\n"
-            "Reason: No trained detection model is connected.\n"
-        )
-
-        st.download_button(
-            label="Download Analysis Report",
-            data=report,
-            file_name="image_analysis_report.txt",
-            mime="text/plain"
-        )
-
-           except (UnidentifiedImageError, OSError, ValueError):
-        st.error(
-            "The uploaded file could not be read as a valid image. "
-            "Please upload a valid JPG, JPEG, PNG, or WEBP image."
-        )
+            "DEEPFA
