@@ -104,7 +104,8 @@ if uploaded_file is not None:
             mime="text/plain"
         )
 
-    except (UnidentifiedImageError, OSError, ValueError):
+           except (UnidentifiedImageError, OSError, ValueError):
         st.error(
             "The uploaded file could not be read as a valid image. "
-            "Please upload a valid JPG, JPEG, PNG, or WEBP
+            "Please upload a valid JPG, JPEG, PNG, or WEBP image."
+        )
