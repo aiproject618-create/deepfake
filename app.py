@@ -1,89 +1,80 @@
-
-import os
+```python
 import streamlit as st
 import numpy as np
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 # ---------------- PAGE CONFIGURATION ----------------
 st.set_page_config(
-    page_title="Deepfake AI Detector",
+    page_title="Deepfake AI Detection",
     page_icon="🔍",
     layout="centered"
 )
 
 st.title("🔍 Deepfake AI Detection System")
-st.write("CBSE Class 12 Artificial Intelligence Project")
+st.subheader("CBSE Class 12 Artificial Intelligence Project")
+
 st.write(
-    "Upload an image to analyze it using a trained deep learning model."
+    "Upload an image to view its properties and perform "
+    "a basic image-quality analysis."
 )
 
-MODEL_PATH = "deepfake_model.keras"
-
-
-# ---------------- LOAD MODEL ----------------
-@st.cache_resource
-def load_model(model_path):
-    import tensorflow as tf
-    return tf.keras.models.load_model(
-        model_path,
-        compile=False
-    )
-
-
-model = None
-
-if os.path.exists(MODEL_PATH):
-    try:
-        model = load_model(MODEL_PATH)
-    except Exception:
-        st.error(
-            "The model file could not be loaded. "
-            "Check that deepfake_model.keras is a valid Keras model."
-        )
-else:
-    st.warning(
-        "Trained model not found. Add deepfake_model.keras "
-        "to your project folder to enable predictions."
-    )
-
+st.warning(
+    "Demo mode: This version does not use a trained deepfake "
+    "detection model. It cannot reliably classify an image as real or fake."
+)
 
 # ---------------- IMAGE UPLOAD ----------------
 uploaded_file = st.file_uploader(
-    "Choose an image",
-    type=["jpg", "jpeg", "png", "webp"]
+    "Upload an image",
+    type=["jpg", "jpeg", "png", "webp"],
+    help="Supported formats: JPG, JPEG, PNG, WEBP"
 )
 
+# ---------------- IMAGE ANALYSIS ----------------
+if uploaded_file is not None:
+    try:
+        with Image.open(uploaded_file) as original:
+            original.verify()
 
-# ---------------- IMAGE PREPROCESSING ----------------
-def prepare_image(image, model):
-    input_shape = model.input_shape
+        uploaded_file.seek(0)
 
-    if isinstance(input_shape, list) or len(input_shape) != 4:
-        raise ValueError("The model must accept one image input.")
+        with Image.open(uploaded_file) as original:
+            image = ImageOps.exif_transpose(original).convert("RGB")
 
-    _, height, width, channels = input_shape
+        st.success("Image uploaded successfully.")
 
-    if height is None or width is None:
-        raise ValueError("The model must have a fixed input size.")
+        st.image(
+            image,
+            caption="Uploaded image",
+            use_container_width=True
+        )
 
-    if channels not in (1, 3):
-        raise ValueError("Only grayscale and RGB models are supported.")
+        # Image properties
+        width, height = image.size
+        image_array = np.asarray(image)
 
-    image = ImageOps.exif_transpose(image)
+        st.subheader("Image Information")
 
-    if channels == 1:
-        image = image.convert("L")
-    else:
-        image = image.convert("RGB")
+        col1, col2 = st.columns(2)
 
-    image = image.resize(
-        (int(width), int(height)),
-        Image.Resampling.BILINEAR
-    )
+        with col1:
+            st.metric("Width", f"{width} pixels")
+            st.metric("Height", f"{height} pixels")
 
-    array = np.asarray(image, dtype=np.float32)
+        with col2:
+            st.metric("Total pixels", f"{width * height:,}")
+            st.metric("File size", f"{uploaded_file.size / 1024:.2f} KB")
 
-    if channels == 1:
-        array = np.expand_dims(array, axis=-1)
+        # Basic image statistics
+        st.subheader("Basic Image Analysis")
 
-   
+        brightness = float(np.mean(image_array))
+        contrast = float(np.std(image_array))
+
+        st.write(f"Average pixel brightness: {brightness:.2f} / 255")
+        st.progress(int(np.clip(brightness / 255 * 100, 0, 100)))
+
+        st.write(f"Pixel intensity variation: {contrast:.2f}")
+
+        st.info(
+            "These measurements describe the image only. They do not
